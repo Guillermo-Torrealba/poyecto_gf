@@ -1,6 +1,6 @@
 ---
 title: "Proyecto Gestión Financiera"
-author: "Julio Tejero"
+author: "Guillermo Torrealba"
 format: html
 editor: visual
 bibliography: references.bib
@@ -45,114 +45,41 @@ El sector para estudiare en este caso corresponde a la industria automotriz debi
 
 Además, el mercado de financiamiento automotriz está proyectado para crecer a una tasa compuesta anual del 6% hasta 2028, alcanzando un valor de \$320 mil millones. Sin embargo, es importante considerar los desafíos que enfrenta actualmente, como el aumento de la morosidad y los costos de financiamiento, que han llevado a caídas significativas en las utilidades de varias empresas del sector. Por ejemplo, algunas compañías han reportado disminuciones de hasta el 89% en sus ganancias en el primer trimestre de 2023. Esta dualidad entre oportunidades y retos hace que el estudio de la industria automotriz sea no solo pertinente, sino esencial para entender las dinámicas económicas actuales y futuras.
 
-### Modelo Binomial
+### Derivados
 
-El Modelo Binomial de Valoración de Opciones (BM, por sus siglas en inglés) también conocido como Cox-Ross-Rubinstein introducido en @cox1979, es un modelo que estima el valor de una opción en t=0 teniendo pagos futuros en diferentes estados (usualmente "Up" y "Down"). Este Modelo Binomial asume que no hay posibilidad de arbitraje en el mercado, determinando el precio que sigue un activo en un random walk, en donde en cada paso (tiempo) existe una probabilidad de que el precio suba o baje (Ahmad, 2018).
+Para analizar la opción call de Toyota Motor Corporation, se utilizo el modelo de Black-Scholes en un periodo. Este se hizo mediante Google Colab. Para emplear Black-Scholes primero fue necesario determinar los parametros para ingresarlos a la formula. Con las suiguiente información (imagenes a continuación) obtenemos los parametros.
 
-![Random Walk en BM de un paso (Ahmad, 2018)](Data/Screenshot%202023-10-19%20at%2010.33.38.png){fig-align="center"}
+![](photos/Captura%20de%20pantalla%202024-09-25%20175630.png)
 
-Para calcular la valoración de la opción con el Modelo Binomial, es necesario definir $S_0$, que corresponde al precio actual del activo. Además, se deben determinar los valores de $u$ y $d$, que representan los factores por los cuales se multiplica $S_0$ en cada estado para obtener el precio del activo en cada caso en el siguiente período (t = 1):
+![](photos/Captura%20de%20pantalla%202024-09-25%20175536.png)
 
-$$
-S_1 = \begin{cases}    S_0\cdot u \text{ en el estado ``Up"} \\    
-S_0\cdot d \text{ en el estado ``Down"}\end{cases}
-$$
+##### Parámetros Opción (TM)
 
-También se debe calcular la probabilidad $P$ de que ocurra el caso "Up", la probabilidad de que ocurra el otro caso ("Down") simplemete quedaría en $(1-P)$. Para el calculo de la porobabilidad se usa la siguiente ecuación:
+-   Último precio de la opción (q3) = 3.55
 
-$$
-P = \frac{e^r-d}{u-d}
-$$
+-   Precio de ejercicio (K) = 185
 
-Donde $r$ es la tasa libre de riesgo.
+##### Parámetros Bono (SPDR Bloomberg 1-3 month T-Bill ETF)
 
-Por otro lado se deben calcular $C_u$ y $C_d$ los cuales se obtienen como los precios de una opción europea:
+-   Rendimiento del bono (r) = 5.18
 
-$$
-C_u = max(0, S_0\cdot u-k)\\
-C_d = max(0, S_0\cdot d-k)
-$$
+-   Precio actual del bono (B) = 91.77
 
-Finalmente el precio de la opción se calcula de la siguiente manera:
+##### Parámetros Acción (TM)
 
-$$
-V = \frac{C_u\cdot P + C_d\cdot (1-P)}{1+r}
-$$
+-   Factor de creciemiento (u) = 1.003
 
-```{r}
-binomial_model <- function(cu, p, cd, rf) {
-  return((cu*p + cd*(1-p))/(1+rf))
-} 
+Para el factor de creciemiento se tiene que ver el valor más alto del día y dividirlo por el So.
 
-S <- tail(ENELCHILE$close,1)  # Precio actual del activo subyacente
-K <- 38  # Precio de ejercicio de la opción
-T <- 1  # Tiempo hasta la expiración (en años)
-r <- 0.0642 # Tasa de interés libre de riesgo
-u <- 1.1  # Factor de crecimiento en un paso hacia arriba
-d <- 0.9  # Factor de crecimiento en un paso hacia abajo
+-   Factor de decreciemiento (d) = 0.996
 
-Su <- S*u
-Sd <- S*d
-p <- (1+r-d)/((1+r)*(u-d))
+Para el factor de decreciemiento se tiene que ver el valor más bajo del día y dividirlo por el So.
 
-cu <- max(Su - K, 0)
-cd <- max(Sd - K, 0)
+-   Precio Inicial del activo subyacente (S0) = 184.16
 
+Luego se implemento el modelo Black-Scholes como se ve a continuación:
 
-print(paste("El precio de la opción con el Modelo Binomial es ", binomial_model(cu, p, cd, r)))
-
-```
-
-### Modelo Black and Scholes (BS)
-
-```{r}
-black_scholes <- function(S, K, t, r, sigma) {
-    d1 <- (log(S/K) + (r + 0.5 * sigma^2) * t) / (sigma * sqrt(t))
-    d2 <- d1 - sigma * sqrt(t)
-    N_d1 <- pnorm(d1)
-    N_d2 <- pnorm(d2)
-    precio_call <- S * N_d1 - K * exp(-r * t) * N_d2
-    return(precio_call)
-  }
-  
-rendimientos <- diff(log(ENELCHILE$close))
-sigma<-sd(rendimientos[2:length(rendimientos)])
-volatilidad<-var(rendimientos[2:length(rendimientos)])
-
-
-S<- tail(ENELCHILE$close,1) # Precio actual del activo subyacente
-K<- 38 # Precio de ejercicio de la opción
-R<- 0.0642 # Tasa de interés libre de riesgo
-t <- 1 # Tiempo hasta la expiración (en años)
-
-print(paste("El precio de la opción con el Modelo Black and Scholes es ", black_scholes(S, K, t, R, sigma)))
-
-
-```
-
-### Comparación de modelos
-
-Ambos modelos son comúnmente utilizados en las finanzas. Por lo tanto, se puede afirmar que cuentan con respaldo y fundamentos sólidos. Según el artículo de (Ahmad, 2018), los resultados del precio de la opción calculados con ambos modelos muestran una correlación muy cercana a 1, lo que significa que si el precio de la opción aumenta con un modelo, también lo hace con el otro. Sin embargo, esto no implica que ambos modelos proporcionen el mismo precio, como se puede observar en el ejercicio realizado anteriormente.
-
-Estos modelos difieren en algunas cosas, tales como:
-
--   Precio del activo subyacente: En modelo Black and Scholes sigue una distribución lognormal mientras que el Binomial multiplica el valos $S_0$ con dos opciones ($u$ y $d$)
-
--   Debido a lo anterior, el modelo de Black and Scholes es continuo y el Binomial discreto.
-
--   El modelo BS sirve solo para opciones europeas, mientras que el Binomial también sirve para opciones americanas.
-
-También tienen algunas similitudes:
-
--   Ambos utilizan el precio actual del activo subyacente.
-
--   Ambos usan la tasa libre de riesgo.
-
--   En este caso los dos se usaron para un periodo de tiempo.
-
--   Ambos consideran la volatilidad del activo.
-
-En resumen, el modelo de Black-Scholes constituye una buena herramienta analítica para valorar opciones europeas y supone movimientos continuos en las cotizaciones del mercado. En cambio, el modelo Binomial ofrece mayor flexibilidad al emplear una estructura de árbol que facilita la valoración tanto de opciones europeas como americanas. Elegir uno u otro modelo dependerá del tipo específico de opción que se esté analizando y las inferencias que se quieran hacer en relación a cómo evolucionarán los precios en el mercado financiero.
+![](photos/Captura%20de%20pantalla%202024-09-25%20183436.png)
 
 ## Bibliografía
 
